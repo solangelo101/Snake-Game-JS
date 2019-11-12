@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title></title>
+    <style>
+      .main-div {
+        padding: 20px 0px;
+        border-radius: 30px;
+        width: 700px;
+        left: 0;
+        margin: 5vh auto;
+        background-color: white;
+      }
+    * {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: sans-serif;
+        background: black;
+        align-items: center;
+        height:100%;
+      }
+      canvas {
+        background-color: black;
+        border: 1px solid white;
+      }
+    </style>
+  </head>
+  <body onload="getHighScore(); set(speed);">
+    <div class="main-div">
+      <div
+        style="justify-content: space-around;width: 100%;align-items: center;display: inline-flex;padding:  5px">
+        <h3 id="hScore">Score 0</h3>
+        <h3 id="highScore">HighScore 0</h3>
+      </div>
+      <center><canvas width="640" height="640" id="game"></canvas></center>
+    </div>
+    <script>
+      // let applex = 320,appley = 320;
+      let score = getScore();
+      let hScore = document.getElementById("hScore");
+      hScore.innerHTML="Score : "+score;
+      let highscore = getHighScore();
+      let hHighScore = document.getElementById("highScore");
+      hHighScore.innerHTML="High Score : "+highscore;
+      var canvas = document.getElementById("game");
+      var context = canvas.getContext("2d");
+      context.scale(1.25,1.25);
+
+      var grid = 16;
+      var count = 0;
+      let dx = grid,
+        dy = 0;
+      let speed = 150;
+      let interval;
+      let isPaused = false;
+      let isOver=false;
+
+      var snake =getSnake();
+
+      var apple = {
+        x: 320,
+        y: 320
+      };
+
+
+      function getSnake()
+      {
+        if(!localStorage.snake)
+        {
+          localStorage.snake=JSON.stringify({
+            x : 160,
+            y : 160 ,
+           cells : [{x:160 , y:160} , {x:144 , y:160}]
+          });
+        }
+          return JSON.parse(localStorage.snake);
+      }
+
+      function storeSnake(snake)
+      {
+        localStorage.snake=JSON.stringify(snake);
+      }
+
+      function getScore()
+      {
+        if(!localStorage.score)
+        {
+          localStorage.score=JSON.stringify(0);
+        }
+          return JSON.parse(localStorage.score);
+      }
+
+      function storeScore(score)
+      {
+        localStorage.score=JSON.stringify(score);
+        hScore.innerHTML="Score : "+score;
+      }
+
+      function getHighScore()
+      {
+        if(!localStorage.highscore)
+        {
+          localStorage.highscore=JSON.stringify(0);
+        }
+          return JSON.parse(localStorage.highscore);
+      }
+
+      function storeHighScore(highscore)
+      {
+        localStorage.highscore=JSON.stringify(highscore);
+        hHighScore.innerHTML="High Score : "+highscore;
+      }
+
+      // draw apple
+      function drawApple() {
+        context.fillStyle = "red";
+
+        context.fillRect(apple.x, apple.y, grid-1, grid-1);
+      }
+      drawApple();
+
+      // draw snake
+      function drawSnake() {
+        context.fillStyle='#99ff66';
+        context.fillRect(snake.cells[0].x, snake.cells[0].y, grid-1, grid-1);
+        context.fillStyle = 'green';
+        for(let i=1 ; i<snake.cells.length ; i++)
+          context.fillRect(snake.cells[i].x, snake.cells[i].y, grid-1, grid-1);
+          storeSnake(snake);
+      }
+      drawSnake(); // for initial snake
+
+      function generateRandomApple() {
+        apple.x = Math.floor(Math.random() * 640);
+        if (apple.x < 16) {
+          generateRandomApple();
+        }
+        let extra = apple.x % 16;
+        apple.x = apple.x - extra;
+        for (let i = 0; i < snake.cells.length; i++) {
+          if (snake.cells[i].x == apple.x) {
+            generateRandomApple();
+            break;
+          }
+        }
+
+        apple.y = apple.x;
+        console.log(apple.x, apple.y);
+      }
+
+      function moveSnake(dx, dy) {
+        // ALways adding one at front and removing thr last while moving normallly
+        console.log(snake.x, snake.y);
+        snake.x += dx;
+        snake.y += dy;
+
+        snakeTouchesWall();
+        checkSnakeEatsBody();
+        if (snake.x == apple.x && snake.y == apple.y) {
+          snake.cells.unshift({ x: snake.x, y: snake.y }); // Insert at 0th position
+          generateRandomApple();
+          setScore();
+          drawSnake();
+
+        } else {
+          snake.cells.pop(); // remove the last element
+          snake.cells.unshift({ x: snake.x, y: snake.y }); // Insert at 0th position
+          console.log(snake.cells.length);
+          drawSnake();
+        }
+      }
+
+      function snakeTouchesWall() {
+        if (snake.x == 512) {
+          gameOver();
+        } else if (snake.x < 0) {
+          gameOver();
+        }
+        if (snake.y == 512) {
+          gameOver();
+        } else if (snake.y < 0) {
+          gameOver();
+        }
+      }
+
+      function gameOver()
+      {
+        isOver=true;
+        clear();
+        context.fillStyle = "red";
+        context.font = "50px arial";
+        context.textAlign = "center";
+        context.fillText( "Game Over!!",
+          canvas.height *0.4,
+          canvas.height *0.25
+        );
+        context.fillText( "Press 'R' to restart.",
+          canvas.height *0.40,
+          canvas.height *0.40
+        );
+        snake={
+          x : 160,
+          y : 160 ,
+         cells : [{x:160 , y:160} , {x:144 , y:160}] ,
+         die : false , // to close the game
+         eatApple : false , // set when eat apple , to increase the size
+        };
+        storeSnake(snake);
+        score=0;
+        storeScore(score);
+      }
+
+      function checkSnakeEatsBody() {
+        for (let i = 0; i < snake.cells.length; i++) {
+          if (snake.cells[i].x == snake.x && snake.cells[i].y == snake.y) {
+            // alert("game over");
+            gameOver();
+          }
+        }
+      }
+
+
+      function setScore() {
+        score++;
+        storeScore(score);
+        if (score > highscore) {
+          storeHighScore(score);
+        }
+        console.log(hScore.innerHTML);
+        hScore.innerHTML = `Score ${score}`;
+      }
+
+      function clear() {
+        clearInterval(interval);
+      }
+
+      set = speed => {
+        interval = setInterval(() => {
+          context.clearRect(0, 0, canvas.width, canvas.height); // Clear the Canvas
+          moveSnake(dx, dy);
+          drawApple();
+          // drawWalls();
+          console.log(speed);
+        }, speed);
+      };
+
+      pausePlayGame = () => {
+        if (isPaused) {
+          isPaused = false;
+
+          set(speed);
+        } else if (!isPaused) {
+          isPaused = true;
+          context.fillStyle = "red";
+          context.font = "40px arial";
+          context.textAlign = "center";
+          context.fillText( "Press 'P' to resume!",
+            canvas.height *0.40,
+            canvas.height *0.40
+          );
+
+          clear();
+        }
+      };
+
+      resetGame = () => {
+        window.location.reload();
+      };
+
+      document.addEventListener("keydown", function(e) {
+        // left arrow key
+        if (e.keyCode == 37) {
+          if (snake.x - grid != snake.cells[1].x) {
+            dx = -grid;
+            dy = 0;
+          }
+        }
+        // up arrow key
+        else if (e.keyCode == 38) {
+          if (snake.y - grid != snake.cells[1].y) {
+            dy = -grid;
+            dx = 0;
+          }
+        }
+        // right arrow key
+        else if (e.keyCode == 39) {
+          if (snake.x + grid != snake.cells[1].x) {
+            dx = grid;
+            dy = 0;
+          }
+        }
+        // down arrow key
+        else if (e.keyCode == 40) {
+          if (snake.y + grid != snake.cells[1].y) {
+            dy = grid;
+            dx = 0;
+          }
+        } else if (e.keyCode == "82") {
+          resetGame();
+        } else if (e.keyCode == "80") {
+          pausePlayGame();
+        }
+        //else if (e.keyCode==) {
+
+        //}
+      });
+    </script>
+  </body>
+</html>

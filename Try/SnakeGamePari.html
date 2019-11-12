@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <style>
+  html, body { height: 100%; margin: 0; }
+  body { background: black; display: flex; align-items: center; justify-content: center; }
+  h4{ color:white;  }
+  ol{ display:inline; list-style: none ;text-align: center;  }
+  canvas { border: 1px solid white; }
+  </style>
+</head>
+<body onload="start()">
+  <ol>
+    <li><h4 id="hscore"></h4></li>
+  <li><h4 id="hhighscore"></h4></li>
+<li>
+<canvas width="400" height="400" id="game"></canvas></li>
+</ol>
+<script>
+
+var canvas = document.getElementById('game');
+//canvas.setAttribute('color','gray');
+var context = canvas.getContext('2d');
+context.fillStyle="blue";
+var grid = 16;
+var lastMove = 'right';
+var gameover=false;
+var gamepause=false;
+
+var score =getScore();
+var highscore=getHighScore();
+
+var hscore=document.getElementById("hscore");
+hscore.innerHTML="Score "+score;
+
+var hhighscore=document.getElementById("hhighscore");
+hhighscore.innerHTML="High Score "+highscore;
+
+var snake =getSnake();
+var speed;
+
+function getSnake()
+{
+  if(!localStorage.snake)
+  {
+    localStorage.snake=JSON.stringify({
+      x : 160,
+      y : 160 ,
+     cells : [{x:160 , y:160} , {x:144 , y:160}] ,
+     die : false , // to close the game
+     eatApple : false , // set when eat apple , to increase the size
+    });
+  }
+    return JSON.parse(localStorage.snake);
+}
+
+function storeSnake(snake)
+{
+  localStorage.snake=JSON.stringify(snake);
+}
+
+function getScore()
+{
+  if(!localStorage.score)
+  {
+    localStorage.score=JSON.stringify(0);
+  }
+    return JSON.parse(localStorage.score);
+}
+
+function storeScore(score)
+{
+  localStorage.score=JSON.stringify(score);
+}
+
+function getHighScore()
+{
+  if(!localStorage.highscore)
+  {
+    localStorage.highscore=JSON.stringify(0);
+  }
+    return JSON.parse(localStorage.highscore);
+}
+
+function storeHighScore(highscore)
+{
+  localStorage.highscore=JSON.stringify(highscore);
+}
+
+function checkAppleIsOnSnake(){
+   for(let i = 0 ; i < snake.cells.length ; i++){
+    if( apple.x == snake.cells[i].x && apple.y == snake.cells[i].y){
+      return true ;
+    }
+  }
+}
+
+var apple = {
+  x: 320,
+  y: 320
+};
+// draw apple
+function drawApple()
+{
+  context.fillStyle = 'red';
+  context.fillRect(apple.x, apple.y, grid-1, grid-1);
+}
+drawApple();
+
+// draw snake
+function drawSnake()
+{
+
+  for(let i=0 ; i<snake.cells.length ; i++)
+  {
+    if(i == 0) context.fillStyle = 'lightgreen';
+    else context.fillStyle = 'green';
+    context.fillRect(snake.cells[i].x, snake.cells[i].y, grid-1, grid-1);
+  }
+}
+drawSnake();
+showScore();
+function generateApple(){
+  apple.x = getRandomInt();
+  apple.y = getRandomInt();
+  if( checkAppleIsOnSnake() ){
+    generateApple() ;
+  }
+}
+function getRandomInt()
+{
+  var random1=Math.floor(Math.random()*24+0);
+    var random2=Math.floor(Math.random()*24+0);
+    return random1*16;
+}
+function moveSnake( dx , dy)
+{
+  snake.x += dx ;
+  snake.y += dy ;
+  /*if(snake.x==snake.cells[1].x && snake.y==snake.cells[1].y)
+  {
+    snake.x -= dx;
+    snake.y -= dy;
+    return;
+  }*/
+  for(let i=1 ; i<snake.cells.length ; i++)
+  {
+   if(snake.x==snake.cells[i].x && snake.y==snake.cells[i].y)
+   {
+    gameOver();
+   }
+  }
+
+  if(snake.x==apple.x && snake.y==apple.y)
+  {
+    score++;
+    if(highscore<score)
+    {
+      highscore=score;
+      storeHighScore(highscore);
+    }
+    storeScore(score);
+    context.clearRect(0, 0, canvas.width,canvas.height);
+    snake.cells.unshift({x: snake.x , y: snake.y})
+    drawSnake();
+    //removeApple();
+    generateApple();
+    drawApple();
+    showScore();
+  }
+else{
+  snake.cells.unshift({x: snake.x , y: snake.y}) ; // Insert at 0th position
+  snake.cells.pop();  // remove the last element
+  drawSnake();
+}
+}
+
+function showScore()
+{
+  hscore.innerHTML="Score "+score;
+  hhighscore.innerHTML="High Score "+highscore;
+}
+function gameOver(){
+  context.clearRect(0, 0, canvas.width,canvas.height);// Clear the Canvas
+  gameover=true;
+  clearTimeout(speed);
+  snake.cells=[];
+  snake =
+  {
+    x : 160,
+    y : 160 ,
+   cells : [{x:160 , y:160} , {x:144 , y:160}] ,
+   die : false , // to close the game
+   eatApple : false , // set when eat apple , to increase the size
+  };
+  storeSnake(snake);
+  context.fillStyle = 'red';
+  context.font = "30px Arial";
+  context.textAlign = "center";
+  context.fillText("Game Over\n\n\nPress'S' to restart!" , canvas.width/2, canvas.height/2);
+  score=0;
+  storeScore(score);
+}
+
+function gamePause()
+{
+  clearTimeout(speed);
+  gamepause=true;
+  context.clearRect(0, 0, canvas.width,canvas.height);// Clear the Canvas
+  context.fillStyle = 'red';
+  context.font = "30px Arial";
+  context.textAlign = "center";
+  context.fillText("Game Paused!\n\n\n\n\nPress 'P' to resume!" , canvas.width/2, canvas.height/2);
+}
+
+function move()
+{
+  let dx  = 0 , dy = 0;
+  // left arrow key
+  if (lastMove == 'left')
+  {
+    dx = -grid;
+    dy = 0;
+  }
+   // up arrow key
+  else if (lastMove == 'up')
+  {
+    dy = -grid;
+    dx = 0;
+  }
+   // right arrow key
+  else if (lastMove == 'right')
+  {
+    dx = grid;
+    dy = 0;
+  }
+   // down arrow key
+  else if (lastMove == 'down'  )
+  {
+    dy = grid;
+    dx = 0;
+  }
+  else{
+    return;
+  }
+
+  if(snake.x<=0  || snake.x>=400  || snake.y<=0  || snake.y>=400 )
+ {
+   gameOver();
+ }
+  else{
+  context.clearRect(0, 0, canvas.width,canvas.height);// Clear the Canvas
+  moveSnake(dx,dy);
+  drawSnake();
+  drawApple();
+  }
+}
+
+function start()
+{
+  gameover=false;
+  move();
+  var speed=setTimeout(start, 200);
+}
+// listen to keyboard events to move the snake
+document.addEventListener('keydown', function(e)
+{
+  // left arrow key
+  if (e.keyCode == 37  && lastMove!='right')
+  {
+    lastMove = 'left';
+    console.log(e.KeyCode);
+    move();
+  }
+   // up arrow key
+  else if (e.keyCode == 38 && lastMove!='down')
+  {
+    lastMove = 'up';
+    console.log(e.KeyCode);
+    move();
+  }
+   // right arrow key
+  else if (e.keyCode == 39  && lastMove!='left')
+  {
+    lastMove = 'right';
+    console.log(e.KeyCode);
+    move();
+  }
+   // down arrow key
+  else if (e.keyCode == 40 && lastMove!='up')
+  {
+    lastMove = 'down';
+    console.log(e.KeyCode);
+    move();
+  }
+  else if(gameover==true && e.keyCode==83)
+  {
+    //location.reload();
+  }
+  else if(gamepause==false && e.keyCode==80)
+  {
+    gamePause();
+  }
+  else if(gamePause==true && e.keyCode==80)
+  {
+    location.reload();
+  }
+  else{
+    return;
+  }
+
+  //console.log(snake.y);
+});
+</script>
+</body>
+</html>
